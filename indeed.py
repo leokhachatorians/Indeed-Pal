@@ -1,18 +1,9 @@
-#####################################
-#									#
-#		Indeed Job Crawler			#
-#		------------------			#
-#		1) Search for Jobs			#
-#		2) Email Results Daily		#
-#									#
-#									#
-#####################################
-
+#!/bin/usr/python
 import requests
 from bs4 import BeautifulSoup
 from config import JOBS, ZIPCODE, BASE_URL, LIMIT, FROM_AGE,\
  				JOB_TYPE, RADIUS, MAIL_SERVER, MAIL_PORT, MAIL_USERNAME,\
- 				MAIL_PASSWORD, MAIL_TO
+ 				MAIL_PASSWORD, MAIL_TO, DB_PATH
 import sqlite3
 from local_server import app, mail
 from flask.ext.mail import Message
@@ -52,7 +43,7 @@ def create_requests_objects(search_urls):
 
 	return r_objects
 
-def parse_request_objects(r_objects):
+def parse_request_objects(r_objects, db_path):
 	"""
 	With the request objects we pass, we make a
 	soup object of each and within the HTML text, we locate
@@ -66,7 +57,7 @@ def parse_request_objects(r_objects):
 		print('Checking jobs')
 		for job in soup.find_all(class_="  row  result"):
 			# Loop through all instances of results
-			if add_to_database(str(job.h2.a['href'])):
+			if add_to_database(str(job.h2.a['href']), db_path):
 				# If the link already exists within the database don't
 				# add it to our results (we're checking the link above btw)
 				results.append(
@@ -80,17 +71,17 @@ def parse_request_objects(r_objects):
 
 	return results
 
-def init_db():
+def init_db(db_path):
 	"""
 	Connect and create our database if need be.
 	"""
-	sql = sqlite3.connect('jobs.db')
+	sql = sqlite3.connect(db_path)
 	cur = sql.cursor()
 
 	cur.execute('CREATE TABLE IF NOT EXISTS oldjobs(LINK TEXT)')
 	print('Loaded database')
 
-def add_to_database(link):
+def add_to_database(link, db_path):
 	"""
 	Connect to our database and check if the given 'link' already
 	exists within the database. If it does we return 'False' to
@@ -101,7 +92,7 @@ def add_to_database(link):
 	added it to the database and we can continue on with creating
 	our email.
 	"""
-	sql = sqlite3.connect('jobs.db')
+	sql = sqlite3.connect(db_path)
 	cur = sql.cursor()
 
 	cur.execute('SELECT * FROM oldjobs WHERE LINK=?', (link,))
@@ -161,10 +152,10 @@ if __name__ == "__main__":
 	server = Process(target=run_server)
 	server.start()
 
-	init_db()
+	init_db(DB_PATH)
 	search_urls = create_search_urls(BASE_URL, JOBS, ZIPCODE, LIMIT, JOB_TYPE, RADIUS)
 	r_objects = create_requests_objects(search_urls)
-	parsed_results = parse_request_objects(r_objects)
+	parsed_results = parse_request_objects(r_objects, DB_PATH)
 
 	send_email(
 				'New Job Alerts!!',
