@@ -5,7 +5,7 @@ BASE_URL = "http://www.indeed.com/jobs?"
 FROM_AGE = '1'
 LIMIT = '10' # Default is 10
 RADIUS = '25' # Default is 25
-
+DB_PATH = 'path/to/your/db.db'
 """
 Acceptable jobs types are:
 	'fulltime'
